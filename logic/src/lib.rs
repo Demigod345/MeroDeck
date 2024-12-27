@@ -80,6 +80,13 @@ pub struct CreateProposalRequest {
     pub params: serde_json::Value,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "calimero_sdk::serde")]
+pub struct ChangePlayerRequest {
+    pub new_player: String,
+}
+
+
 
 // These are the functions that will be called by the frontend
 #[app::logic]
@@ -100,11 +107,15 @@ impl AppState {
         Ok(self.active_player)
     }
 
-    pub fn set_active_player(&mut self, player: u32) -> Result<u32, Error> {
-        self.active_player = player;
+    pub fn set_active_player(&mut self, request: ChangePlayerRequest) -> Result<(), Error> {
+        
+        //Parsing the request
+        let new_player = request.new_player.parse::<u32>().map_err(|_| Error::msg("Invalid player ID"))?;
+        
+        self.active_player = new_player;
 
-        env::emit(&Event::PlayerChanged { id: player });
-        Ok(player)
+        env::emit(&Event::PlayerChanged { id: new_player });
+        Ok(())
     }
 
 

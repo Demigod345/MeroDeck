@@ -13,11 +13,15 @@ import {
   ClientApi,
   ClientMethod,
   CreateProposalRequest,
+  CreatePlayerChangeRequest,
+  CreatePlayerChangeResponse,
   CreateProposalResponse,
   GetProposalMessagesRequest,
   GetProposalMessagesResponse,
+  GetActivePlayerResponse,
   SendProposalMessageRequest,
   SendProposalMessageResponse,
+  GetActivePlayerRequest,
 } from '../clientApi';
 import { getContextId, getNodeUrl } from '../../utils/node';
 import {
@@ -64,10 +68,51 @@ export function getConfigAndJwt() {
 }
 
 export class LogicApiDataSource implements ClientApi {
+
+  async changePlayer(
+    request: CreatePlayerChangeRequest,
+  ): ApiResponse<CreatePlayerChangeResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt(); // This JWT token stores the contextId and executorPublicKey
+    if (error) {
+      return { error };
+    }
+
+    console.log('Creating request to change the current player:', request);
+
+    const params: RpcQueryParams<typeof request> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.SET_ACTIVE_PLAYER,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+        typeof request,
+        CreatePlayerChangeResponse
+      >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.changePlayer);
+    }
+
+    return {
+      data: {},
+      error: null,
+    };
+  }
+
+
+
+
   async createProposal(
     request: CreateProposalRequest,
   ): ApiResponse<CreateProposalResponse> {
-    const { jwtObject, config, error } = getConfigAndJwt();
+    const { jwtObject, config, error } = getConfigAndJwt(); // This JWT token stores the contextId and executorPublicKey
     if (error) {
       return { error };
     }
@@ -194,6 +239,50 @@ export class LogicApiDataSource implements ClientApi {
       error: null,
     };
   }
+
+  async getActivePlayer(
+    request: GetActivePlayerRequest,
+  ): ApiResponse<GetActivePlayerResponse>{
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const params: RpcQueryParams<GetActivePlayerRequest> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.GET_ACTIVE_PLAYER,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    }
+
+    const response = await getJsonRpcClient().query<
+      GetActivePlayerRequest,
+      GetActivePlayerResponse
+    >(params, config);
+
+    console.log('Response recieved from logicapi', response);
+
+    if (response?.error) {
+      return await this.handleError(
+        response.error,
+        {},
+        this.getActivePlayer,
+      );
+    }
+
+    let getActivePlayerResponse: GetActivePlayerResponse = {
+      active_player: response?.result?.output,
+    } as GetActivePlayerResponse;
+
+    return {
+      data: getActivePlayerResponse,
+      error: null
+    }
+
+  }
+
+
+
   async sendProposalMessage(
     request: SendProposalMessageRequest,
   ): ApiResponse<SendProposalMessageResponse> {

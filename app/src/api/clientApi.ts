@@ -17,6 +17,13 @@ export interface GetProposalMessagesResponse {
   messages: Message[];
 }
 
+export interface GetActivePlayerRequest {}
+
+export interface GetActivePlayerResponse {
+  active_player: string;
+}
+
+
 export interface SendProposalMessageRequest {
   // proposalId: String;
   proposal_id: String;
@@ -72,6 +79,12 @@ export interface CreateProposalRequest {
   };
 }
 
+export interface CreatePlayerChangeRequest {
+  new_player: string;
+}
+
+export interface CreatePlayerChangeResponse {}
+
 
 export interface CreateProposalResponse {
   proposal_id: String;
@@ -88,6 +101,8 @@ export enum ClientMethod {
   SEND_PROPOSAL_MESSAGE = 'send_proposal_messages',
   CREATE_PROPOSAL = 'create_new_proposal',
   APPROVE_PROPOSAL = 'approve_proposal',
+  SET_ACTIVE_PLAYER = 'set_active_player',
+  GET_ACTIVE_PLAYER = 'get_active_player',
 }
 
 export interface ClientApi {

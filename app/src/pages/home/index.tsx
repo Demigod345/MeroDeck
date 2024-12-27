@@ -19,8 +19,12 @@ import {
   ApproveProposalResponse,
   CreateProposalRequest,
   CreateProposalResponse,
+  CreatePlayerChangeRequest,
+  CreatePlayerChangeResponse,
   GetProposalMessagesRequest,
   GetProposalMessagesResponse,
+  GetActivePlayerRequest,
+  GetActivePlayerResponse,
   SendProposalMessageRequest,
   SendProposalMessageResponse,
   ProposalActionType,
@@ -259,6 +263,19 @@ export default function HomePage() {
       return;
     }
   }
+
+  async function fetchActivePlayer() {
+    const params: GetActivePlayerRequest = {};
+    const result: ResponseData<GetActivePlayerResponse> =
+      await new LogicApiDataSource().getActivePlayer(params);
+    if (result?.error) {
+      console.error('Error:', result.error);
+      window.alert(`${result.error.message}`);
+      return;
+    }
+    console.log("Recieved data on frontend", result)
+  }
+    
 
   async function sendProposalMessage(request: SendProposalMessageRequest) {
     const params: SendProposalMessageRequest = {
@@ -501,6 +518,21 @@ export default function HomePage() {
     window.alert(`Proposal approved successfully`);
   }
 
+  async function changeActivePlayer(newplayerId: string) {
+    let request: CreatePlayerChangeRequest = {
+      new_player: newplayerId,
+    };
+
+    const result: ResponseData<CreatePlayerChangeResponse> =
+      await new LogicApiDataSource().changePlayer(request);
+    if (result?.error) {
+      console.error('Error:', result.error);
+      window.alert(`${result.error.message}`);
+      return;
+    }
+    window.alert(`Player changed successfully`);
+  }
+
   async function getContextDetails() {
     //TODO implement this function
   }
@@ -682,6 +714,13 @@ export default function HomePage() {
       <TextStyle>
         <span> Welcome to home page!</span>
       </TextStyle>
+      <ButtonSm
+          onClick={() => {
+            fetchActivePlayer();
+          }}
+        >
+          Get Active Player
+      </ButtonSm>
 
       <div> Proposals </div>
 
