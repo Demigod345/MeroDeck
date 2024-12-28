@@ -12,6 +12,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import styled from 'styled-components';
 import {
   getWsSubscriptionsClient,
+  getGameEventListener,
   LogicApiDataSource,
 } from '../../api/dataSource/LogicApiDataSource';
 import {
@@ -225,6 +226,11 @@ export default function HomePage() {
   const [selectedProposalApprovals, setSelectedProposalApprovals] = useState<
     null | number
   >(null);
+
+  const [activePlayer, setActivePlayer] = useState<number | null>(null);
+
+
+
   const [proposalCount, setProposalCount] = useState<number>(0);
   const [approveProposalLoading, setApproveProposalLoading] = useState(false);
   const [hasAlerted, setHasAlerted] = useState<boolean>(false);
@@ -274,6 +280,7 @@ export default function HomePage() {
       return;
     }
     console.log("Recieved data on frontend", result)
+    setActivePlayer(result.data?.active_player ?? null);
   }
     
 
@@ -489,6 +496,13 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchActivePlayer();
+    }, 5000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
     const setProposalData = async () => {
       await getProposalApprovals();
       await getProposals();
@@ -546,20 +560,40 @@ export default function HomePage() {
   }
 
   // const observeNodeEvents = async () => {
+  //   console.log('Observing node events');
   //   let subscriptionsClient: SubscriptionsClient = getWsSubscriptionsClient();
   //   await subscriptionsClient.connect();
   //   subscriptionsClient.subscribe([getContextId()]);
+  //   console.log('Observing node events for context:', getContextId());
 
-  //   subscriptionsClient?.addCallback((data: NodeEvent) => {
-  //     if (data.data.events && data.data.events.length > 0) {
-  //       let currentValue = String.fromCharCode(...data.data.events[0].data);
-  //       let currentValueInt = isNaN(parseInt(currentValue))
-  //         ? 0
-  //         : parseInt(currentValue);
-  //       console.log('currentValueInt', currentValueInt);
-  //     }
+  //   subscriptionsClient.addCallback((data: NodeEvent) => {
+  //     console.log('Received event:', data);
+  //     // if (data.data.events && data.data.events.length > 0) {
+  //     //   let currentValue = String.fromCharCode(...data.data.events[0].data);
+  //     //   let currentValueInt = isNaN(parseInt(currentValue))
+  //     //     ? 0
+  //     //     : parseInt(currentValue);
+  //     //   console.log('currentValueInt', currentValueInt);
+  //     // }
   //   });
   // };
+  
+  // const observeGameEvents = async () => {
+  //   console.log('Observing game events');
+  //   let gameEventListener = getGameEventListener();
+  //   console.log('Got game event listener:', gameEventListener);
+  //   gameEventListener.on('PlayerChanged', (data) => {
+  //     console.log('Received game event:', data);
+  //   });
+  //   gameEventListener.on('ProposalCreated', (data) => {
+  //     console.log('Received game event:', data);
+  //   });
+  // };
+
+  // useEffect(() => {
+  //   observeGameEvents();
+  // }, []);
+  
 
   // useEffect(() => {
   //   observeNodeEvents();
@@ -711,7 +745,12 @@ export default function HomePage() {
 
   return (
     <FullPageCenter>
+      <div>
+        <h2>Active Player</h2>
+        <p>CUrrent active player is {activePlayer}</p>
+      </div>
       <TextStyle>
+      
         <span> Welcome to home page!</span>
       </TextStyle>
       <ButtonSm

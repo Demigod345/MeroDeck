@@ -27,7 +27,7 @@ test_get_active_player() {
 
     # Run the command with JSON output
     OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" "$method_name")
-    echo "Raw Output: $OUTPUT"
+    # echo "Raw Output: $OUTPUT"
 
     # Parse the JSON output and extract the result
     RETURN_VALUE=$(echo "$OUTPUT" | jq -r '.result.output')
@@ -42,20 +42,25 @@ test_get_active_player() {
 }
 
 # Test to check if set_active_player is working
-# test_set_active_player() {
-#     local set_method="set_active_player"
-#     local get_method="get_active_player"
-#     local new_value=1
+test_set_active_player() {
+    local set_method="set_active_player"
+    local get_method="get_active_player"
+    local new_value=2
 
-#     # Set the active player
-#     meroctl --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" "$set_method" --args "{\"player\": $new_value}"
+    # Set the active player
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"new_player\": $new_value}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" "$set_method" 
 
-#     # Get the active player
-#     OUTPUT=$(meroctl --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" "$get_method")
-#     RETURN_VALUE=$(echo "$OUTPUT" | jq -r '.output')
+    # Get the active player
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_active_player)
+    RETURN_VALUE=$(echo "$OUTPUT" | jq -r '.result.output')
 
-#     [[ "$RETURN_VALUE" == "$new_value" ]]
-# }
+    if [[ "$RETURN_VALUE" == "$new_value" ]] ; then
+        return 0
+    else
+        echo "Expected $new_value, but got $RETURN_VALUE"
+        return 1
+    fi
+}
 
 # Add more test functions as needed...
 
@@ -65,7 +70,7 @@ main() {
 
     # Add your test functions here
     run_test test_get_active_player
-    # run_test test_set_active_player
+    run_test test_set_active_player
 
     echo ""
     echo "Test Summary:"

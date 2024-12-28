@@ -31,6 +31,7 @@ import {
 } from '../../utils/storage';
 import { AxiosHeader, createJwtHeader } from '../../utils/jwtHeaders';
 import { getRpcPath } from '../../utils/env';
+import GameEventListener from '../../utils/GameEventListener';
 
 export function getJsonRpcClient() {
   return new JsonRpcClient(getStorageAppEndpointKey() ?? '', getRpcPath());
@@ -38,6 +39,10 @@ export function getJsonRpcClient() {
 
 export function getWsSubscriptionsClient() {
   return new WsSubscriptionsClient(getStorageAppEndpointKey() ?? '', '/ws');
+}
+
+export function getGameEventListener() {
+  return new GameEventListener(getNodeUrl(), getStorageAppEndpointKey() ?? '');
 }
 
 export function getConfigAndJwt() {

@@ -83,7 +83,7 @@ pub struct CreateProposalRequest {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct ChangePlayerRequest {
-    pub new_player: String,
+    pub new_player: u32,
 }
 
 
@@ -110,11 +110,12 @@ impl AppState {
     pub fn set_active_player(&mut self, request: ChangePlayerRequest) -> Result<(), Error> {
         
         //Parsing the request
-        let new_player = request.new_player.parse::<u32>().map_err(|_| Error::msg("Invalid player ID"))?;
+        let new_player = request.new_player;
         
         self.active_player = new_player;
 
-        env::emit(&Event::PlayerChanged { id: new_player });
+        // env::emit(&Event::PlayerChanged { id: new_player });
+        app::emit!(Event::PlayerChanged { id: new_player });
         Ok(())
     }
 

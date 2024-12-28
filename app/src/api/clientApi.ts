@@ -20,7 +20,7 @@ export interface GetProposalMessagesResponse {
 export interface GetActivePlayerRequest {}
 
 export interface GetActivePlayerResponse {
-  active_player: string;
+  active_player: number;
 }
 
 
