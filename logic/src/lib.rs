@@ -1,8 +1,8 @@
-use calimero_sdk::borsh::{BorshDeserialize, BorshSerialize};
+use calimero_sdk::borsh::{de, BorshDeserialize, BorshSerialize};
 use calimero_sdk::env::ext::{AccountId, ProposalId};
 use calimero_sdk::serde::{Deserialize, Serialize};
 use calimero_sdk::types::Error;
-use calimero_sdk::{app, env};
+use calimero_sdk::app;
 use calimero_storage::collections::{UnorderedMap, Vector};
 
 #[app::state(emits = Event)]
@@ -12,20 +12,21 @@ pub struct GameState {
     // Need to store which player is active currently
     active_player: u32,
     players: Vec<Player>,
-    community_cards: Vec<u32>, // Will be encrypted later
+    community_cards: Vec<Card>, // Will be encrypted later
     phase: GamePhase,
     action_position: usize,
     starting_position: usize,
     pot: u64,
-    current_bet: u64,
-    last_raise_position: Option<usize>,
+    current_bet: Option<u64>,
+    // last_raise_position: Option<usize>,
     round_bets: Vec<u64>, //Stores the amout betted by each player in the current round
     checked_positions: Vec<usize>, //Stores the positions of players who have checked
-    deck: Vec<u32>, // Will be encrypted later
+    deck: Vec<Card>, // Will be encrypted later
 }
 
-#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
 pub struct Player {
     public_key: String,
     chips: u64,
@@ -35,8 +36,59 @@ pub struct Player {
     is_all_in: bool,
 }
 
-#[derive(Debug, Clone, BorshDeserialize, BorshSerialize)]
+#[derive(Copy, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 #[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
+pub enum Rank {
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Jack,
+    Queen,
+    King,
+    Ace,
+}
+
+#[derive(Copy, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
+pub enum Suit {
+    Hearts,
+    Diamonds,
+    Clubs,
+    Spades,
+}
+
+#[derive(Copy, Clone, Debug, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+#[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
+pub struct Card {
+    rank: Rank,
+    suit: Suit,
+}
+
+pub fn init_deck() -> Vec<Card> {
+    let mut deck: Vec<Card> = Vec::new();
+    for suit in &[Suit::Hearts, Suit::Diamonds, Suit::Clubs, Suit::Spades] {
+        for rank in &[Rank::Two, Rank::Three, Rank::Four,Rank::Five, Rank::Six, Rank::Seven, Rank::Eight, Rank::Nine, Rank::Ten, Rank::King, Rank::Queen, Rank::Jack, Rank::Ace] {
+            deck.push(Card {
+                rank: *rank,
+                suit: *suit,
+            });
+        }
+    }
+    deck
+}
+
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
 pub enum GamePhase {
     Waiting,      // Waiting for players
     PreFlop,     // Initial betting
@@ -50,15 +102,12 @@ pub enum GamePhase {
 #[serde(crate = "calimero_sdk::serde")]
 pub enum PlayerAction {
     Check,
+    Bet(u64),
     Call,
     Raise(u64),
     Fold,
-    AllIn, // Will be implemented later
+    // AllIn, // Will be implemented later
 }
-
-
-
-
 
 // Okay so here are defined the structs that will be used in the logic
 // #[derive(
@@ -75,7 +124,19 @@ pub enum PlayerAction {
 // }
 
 
-
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
+pub struct TestGameEvent{
+    players: Vec<Player>,
+    action_position: usize,
+    starting_position: usize,
+    pot: u64,
+    current_bet: Option<u64>,
+    round_bets: Vec<u64>,
+    checked_positions: Vec<usize>,
+    deck: Vec<Card>,
+}
 
 
 
@@ -102,6 +163,20 @@ pub struct ChangePlayerRequest {
     pub new_player: u32,
 }
 
+// Request for join game
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "calimero_sdk::serde")]
+pub struct JoinGameRequest {
+    pub public_key: String,
+}
+
+// Request for processing action
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(crate = "calimero_sdk::serde")]
+pub struct ProcessActionRequest {
+    pub action: PlayerAction,
+    pub player_index: usize,
+}
 
 
 // These are the functions that will be called by the frontend
@@ -120,19 +195,20 @@ impl GameState {
             action_position: 0,
             starting_position: 0,
             pot: 0,
-            current_bet: 0,
-            deck: (0..52).collect(),
-            last_raise_position: None,
+            current_bet: None,
+            deck: init_deck(),
+            // last_raise_position: None,
             round_bets: Vec::new(),
             checked_positions: Vec::new(),
         }
     }
 
-    // Function to get the currently active player
+    // Sample function
     pub fn get_active_player(&self) -> Result<u32, Error> {
         Ok(self.active_player)
     }
 
+    //Sample function
     pub fn set_active_player(&mut self, request: ChangePlayerRequest) -> Result<(), Error> {
         
         //Parsing the request
@@ -145,8 +221,12 @@ impl GameState {
         Ok(())
     }
 
-    pub fn join_game(&mut self, public_key: String) -> Result<(), Error> {
+
+    // For joining the game
+    pub fn join_game(&mut self, request: JoinGameRequest) -> Result<(), Error> {
         // Check if player already exists
+        let public_key = request.public_key;
+
         for player in self.players.iter() {
             if player.public_key == public_key {
                 return Err(Error::msg("Player already exists"));
@@ -167,30 +247,201 @@ impl GameState {
             is_all_in: false,
         });
 
+        self.round_bets.push(0);
+
         Ok(())
     }
 
-    pub fn process_action(&mut self, player_index: usize, action: PlayerAction) -> Result<(), Error> {
-        let player = &mut self.players[player_index];
+    pub fn process_action(&mut self, request: ProcessActionRequest) -> Result<(), Error> {
+        
+        let player_index = request.player_index;
+        let action = request.action;
+        if player_index != self.action_position {
+            return Err(Error::msg("Not your turn"));
+        }
 
-        // match action {
-        //     PlayerAction::Check => {
-        //         if self.current_bet > 0 {
-        //             return Err("Cannot check when there's a bet".to_string());
-        //         }
-        //         self.checked_positions.push(player_index);
-        //     },
-        //     PlayerAction::Bet(amount) => {
-        //         if self.checked_positions.contains(&player_index) {
-        //             // Player can still bet after checking
-        //             self.checked_positions.retain(|&x| x != player_index);
-        //         }
-        //         self.handle_bet(player_index, amount)?;
-        //         self.last_raise_position = Some(player_index);
-        //     },
-        //     PlayerAction::Call => self.handle_call(player_index)?,
-        //     PlayerAction::Fold => self.handle_fold(player_index)?,
+        let player = &mut self.players[player_index];
+        if player.is_folded {
+            return Err(Error::msg("Player is already folded"));
+        }
+
+        match action {
+            PlayerAction::Check => {
+                if self.current_bet.is_some() {
+                    return Err(Error::msg("Cannot check when there's a bet"));
+                }
+                self.checked_positions.push(player_index);
+                // This looks good
+            },
+            PlayerAction::Fold => {
+                
+                player.is_folded = true;
+            },
+            PlayerAction::Bet(amount) => {
+                // Can only be done if no one has betted yet
+                if self.current_bet.is_some() {
+                    return Err(Error::msg("Cannot bet when there's a bet"));
+                }
+
+
+                // Not managing all in for now
+                if amount > player.chips {
+                    return Err(Error::msg("Insufficient chips"));
+                }
+
+                player.chips -= amount;
+                player.current_bet += amount;
+                self.current_bet = Some(amount);
+                self.round_bets[player_index] = amount;
+
+                
+            },
+            PlayerAction::Call => {
+                // Call only if there is a bet or the rounds
+                let current_bet = self.current_bet.ok_or_else(|| Error::msg("No bet to call"))?;
+                let amount_to_call = current_bet - self.round_bets[player_index];
+
+                if amount_to_call > player.chips {
+                    return Err(Error::msg("Insufficient chips"));
+                }
+
+                player.chips -= amount_to_call;
+                player.current_bet += amount_to_call;
+                self.round_bets[player_index] = current_bet;
+
+            }
+
+            PlayerAction::Raise(new_bet) => {
+
+                // Raise only if there is a bet or the rounds
+                if self.current_bet.is_none() {
+                    return Err(Error::msg("Cannot raise without a bet"));
+                }
+
+                // can raise only if his previous bet is zero (either not betted or checked)
+                // for simplicity, only one raise per round
+                if self.round_bets[player_index] != 0 {
+                    return Err(Error::msg("Already betted cannot raise"));
+                }
+
+                let amount_to_raise = new_bet - self.round_bets[player_index];
+
+                if amount_to_raise > player.chips {
+                    return Err(Error::msg("Insufficient chips"));
+                }
+
+                player.chips -= amount_to_raise;
+                player.current_bet = new_bet;
+                self.current_bet = Some(new_bet);
+                self.round_bets[player_index] = new_bet;
+                // self.last_raise_position = Some(player_index);
+            }
+
+
+            
+        }
+        self.advance_action()?;
+        Ok(())
+    }
+
+    fn advance_action(&mut self) -> Result<(), Error> {
+
+        // If bet is not None and all the players have betted the same amount then the round is complete
+        if self.current_bet.is_some() {
+            let all_betted = self.round_bets.iter().all(|&bet| bet == self.current_bet.unwrap());
+            if all_betted {
+                self.advance_phase()?;
+                return Ok(());
+            }
+        }
+
+
+        // Advance phase if everyone has checked
+        if self.checked_positions.len() == self.players.len() {
+            self.advance_phase()?;
+            return Ok(());
+        }
+
+
+        let mut next_position = (self.action_position + 1) % self.players.len();
+        // let mut next_position = self.action_position;
+        for _ in 0..self.players.len() {
+            next_position = (next_position + 1) % self.players.len();
+            if !self.players[next_position].is_folded {
+            break;
+            }
+        }
+        
+        // Check if betting round is complete
+        // let round_complete = match self.last_raise_position {
+        //     Some(raise_pos) => next_position == raise_pos,
+        //     None => {
+        //         // If no raises, check if everyone has acted
+        //         let active_players: Vec<_> = self.players.iter()
+        //             .enumerate()
+        //             .filter(|(_, p)| !p.is_folded && !p.is_all_in)
+        //             .map(|(i, _)| i)
+        //             .collect();
+                
+        //         let all_checked = active_players.iter()
+        //             .all(|&pos| self.checked_positions.contains(&pos));
+                
+        //         all_checked
+        //     }
+        // };
+
+        // if round_complete {
+        //     self.advance_phase()?;
+        // } else {
+        //     self.action_position = next_position;
         // }
+        self.action_position = next_position;
+
+        Ok(())
+    }
+
+
+    fn advance_phase(&mut self) -> Result<(), Error> {
+        // Reset betting round state
+        self.current_bet = None;
+        // self.last_raise_position = None;
+        self.checked_positions.clear();
+        self.round_bets = vec![0; self.players.len()];
+
+        match self.phase {
+            GamePhase::PreFlop => {
+                self.phase = GamePhase::Flop;
+                // Deal 3 community cards
+            },
+            GamePhase::Flop => {
+                self.phase = GamePhase::Turn;
+                // Deal 1 card
+            },
+            GamePhase::Turn => {
+                self.phase = GamePhase::River;
+                // Deal 1 card
+            },
+            GamePhase::River => {
+                self.phase = GamePhase::Showdown;
+                self.handle_showdown()?;
+            },
+            _ => return Err(Error::msg("Invalid phase")),
+        }
+
+        // Set starting position for new phase
+        self.action_position = self.starting_position;
+        Ok(())
+    }
+
+    fn handle_showdown(&mut self) -> Result<(), Error> {
+        // Compare hands of active players
+        // Determine winner
+        // Distribute pot
+        Ok(())
+    }
+
+    fn get_game_state(&self) -> Result<(), Error> {
+        // Getting the game state for testing
 
         Ok(())
     }
@@ -363,12 +614,6 @@ impl GameState {
 
     //     Ok(())
     // }
-}
-
-
-// Here private functions can be defined
-impl GameState {
-
 }
 
 // #[cfg(test)]
