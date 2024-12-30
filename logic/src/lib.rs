@@ -24,6 +24,7 @@ pub struct GameState {
     round_bets: Vec<u64>, //Stores the amout betted by each player in the current round
     checked_positions: Vec<usize>, //Stores the positions of players who have checked
     deck: Vec<Card>, // Will be encrypted later
+    winner: Option<usize>,
 }
 
 #[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
@@ -98,6 +99,7 @@ pub enum GamePhase {
     Turn,        // After 4th community card
     River,       // After 5th community card
     Showdown,    // Final comparison of hands
+    AllFolded,   // All but one player has folded
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -130,6 +132,7 @@ pub enum PlayerAction {
 #[borsh(crate = "calimero_sdk::borsh")]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct TestGameEvent{
+    phase: GamePhase,
     players: Vec<Player>,
     action_position: usize,
     starting_position: usize,
@@ -139,6 +142,7 @@ pub struct TestGameEvent{
     checked_positions: Vec<usize>,
     community_cards: Vec<Card>,
     // deck: Vec<Card>,
+    winner: Option<usize>,
 }
 
 
@@ -216,6 +220,7 @@ impl GameState {
             // last_raise_position: None,
             round_bets: Vec::new(),
             checked_positions: Vec::new(),
+            winner: None,
         }
     }
 
@@ -345,6 +350,20 @@ impl GameState {
             PlayerAction::Fold => {
                 
                 player.is_folded = true;
+
+                // Check if all but one player has folded
+                let active_players: Vec<_> = self.players.iter()
+                    .enumerate()
+                    .filter(|(_, p)| !p.is_folded)
+                    .map(|(i, _)| i)
+                    .collect();
+
+                if active_players.len() == 1 {
+                    // Only one player left
+                    self.phase = GamePhase::AllFolded;
+                    self.winner = Some(active_players[0]);
+                    return Ok(());
+                }
             },
             PlayerAction::Bet(amount) => {
                 // Can only be done if no one has betted yet
@@ -362,6 +381,7 @@ impl GameState {
                 player.current_bet += amount;
                 self.current_bet = Some(amount);
                 self.round_bets[player_index] = amount;
+                self.pot += amount;
 
                 
             },
@@ -377,6 +397,7 @@ impl GameState {
                 player.chips -= amount_to_call;
                 player.current_bet += amount_to_call;
                 self.round_bets[player_index] = current_bet;
+                self.pot += amount_to_call;
 
             }
 
@@ -403,6 +424,7 @@ impl GameState {
                 player.current_bet = new_bet;
                 self.current_bet = Some(new_bet);
                 self.round_bets[player_index] = new_bet;
+                self.pot += amount_to_raise;
                 // self.last_raise_position = Some(player_index);
             }
 
@@ -417,7 +439,8 @@ impl GameState {
 
         // If bet is not None and all the players have betted the same amount then the round is complete
         if self.current_bet.is_some() {
-            let all_betted = self.round_bets.iter().all(|&bet| bet == self.current_bet.unwrap());
+            // let all_betted = self.round_bets.iter().all(|&bet| bet == self.current_bet.unwrap());
+            let all_betted = self.players.iter().enumerate().all(|(i, player)| player.is_folded || self.round_bets[i] == self.current_bet.unwrap());
             if all_betted {
                 self.advance_phase()?;
                 return Ok(());
@@ -425,8 +448,8 @@ impl GameState {
         }
 
 
-        // Advance phase if everyone has checked
-        if self.checked_positions.len() == self.players.len() {
+        // Advance phase if everyone who hasn't folded has checked
+        if self.checked_positions.len() == self.players.iter().filter(|p| !p.is_folded).count() {
             self.advance_phase()?;
             return Ok(());
         }
@@ -499,14 +522,28 @@ impl GameState {
 
         // Set starting position for new phase
         self.action_position = self.starting_position;
+
+        let mut all_folded:bool = true;
+        for player in self.players.iter() {
+            if !player.is_folded {
+                all_folded = false;
+                break;
+            }
+        }
+        if !all_folded {
+            while self.players[self.action_position].is_folded { //No but this can go in a inf loop if all the players are folded, no but that never happens
+                self.action_position = (self.action_position + 1) % self.players.len();
+            }
+        }
+        
         Ok(())
     }
 
     fn handle_showdown(&mut self) -> Result<(), Error> {
 
         // Determine winner
-        self.determine_winner()?;
-
+        let winner = self.determine_winner()?;
+        self.winner = Some(winner); // Frontend will decide from this only that if winner is not none then the game is over
         // Distribute pot through proposal to external contract
 
         Ok(())
@@ -711,6 +748,7 @@ impl GameState {
     pub fn get_game_state(&self) -> Result<TestGameEvent, Error> {
         // Getting the game state for testing
         Ok(TestGameEvent {
+            phase: self.phase.clone(),
             players: self.players.clone(),
             action_position: self.action_position,
             starting_position: self.starting_position,
@@ -720,6 +758,7 @@ impl GameState {
             checked_positions: self.checked_positions.clone(),
             community_cards: self.community_cards.clone(),
             // deck: self.deck.clone(),
+            winner: self.winner,
         })
     }
 
@@ -893,19 +932,74 @@ impl GameState {
     // }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
     
-//     // Helper function to setup test environment
-//     fn setup() -> AppState {
-//         AppState::init()
-//     }
+    // Helper function to setup test environment
+    #[test]
+    fn test_has_one_pair() {
+        let cards = vec![
+            Card { rank: Rank::Two, suit: Suit::Hearts },
+            Card { rank: Rank::Two, suit: Suit::Diamonds },
+            Card { rank: Rank::Three, suit: Suit::Clubs },
+            Card { rank: Rank::Four, suit: Suit::Spades },
+            Card { rank: Rank::Five, suit: Suit::Hearts },
+            Card { rank: Rank::Six, suit: Suit::Diamonds },
+            Card { rank: Rank::Seven, suit: Suit::Clubs },
+        ];
+        let state = GameState::init();
+        // state.has_one_pair(cards)
+        assert!(state.has_one_pair(cards));
+    }
 
-//     #[test]
-//     fn test_currently_active_player() {
-//         let state = setup();
-//         assert_eq!(state.active_player, 0); // Assuming default is 0
-        
-//     }
-// }
+    #[test]
+    fn test_has_two_pair() {
+        let cards = vec![
+            Card { rank: Rank::King, suit: Suit::Diamonds },
+            Card { rank: Rank::Ten, suit: Suit::Clubs },
+            Card { rank: Rank::Ace, suit: Suit::Hearts },
+            Card { rank: Rank::King, suit: Suit::Hearts },
+            Card { rank: Rank::Nine, suit: Suit::Spades },
+            Card { rank: Rank::Ten, suit: Suit::Hearts },
+            Card { rank: Rank::Jack, suit: Suit::Hearts },
+        ];
+        let state = GameState::init();
+        // state.has_two_pair(cards)
+        assert!(state.has_two_pair(cards));
+    }
+
+    #[test]
+    fn test_has_three_of_a_kind() {
+        let cards = vec![
+            Card { rank: Rank::Two, suit: Suit::Hearts },
+            Card { rank: Rank::Two, suit: Suit::Diamonds },
+            Card { rank: Rank::Two, suit: Suit::Clubs },
+            Card { rank: Rank::Three, suit: Suit::Spades },
+            Card { rank: Rank::Four, suit: Suit::Hearts },
+            Card { rank: Rank::King, suit: Suit::Diamonds },
+            Card { rank: Rank::Five, suit: Suit::Clubs },
+        ];
+        let state = GameState::init();
+        // state.has_three_of_a_kind(cards)
+        assert!(state.has_three_of_a_kind(cards));
+    }
+
+    #[test]
+    fn test_has_straight() {
+        let cards = vec![
+            Card { rank: Rank::Queen, suit: Suit::Hearts },
+            Card { rank: Rank::Jack, suit: Suit::Spades },
+            Card { rank: Rank::Ace, suit: Suit::Hearts },
+            Card { rank: Rank::King, suit: Suit::Hearts },
+            Card { rank: Rank::Nine, suit: Suit::Spades },
+            Card { rank: Rank::Ten, suit: Suit::Hearts },
+            Card { rank: Rank::Jack, suit: Suit::Hearts },
+        ];
+        let state = GameState::init();
+
+        assert!(state.has_straight(cards));
+    }
+
+
+}

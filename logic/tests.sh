@@ -266,6 +266,7 @@ test_first_action() {
     ROUND_BETS=$(echo "$OUTPUT" | jq -r '.result.output.round_bets')
     CHECKED_PLAYERS=$(echo "$OUTPUT" | jq -r '.result.output.checked_players')
     ACTIVE_PLAYER=$(echo "$OUTPUT" | jq -r '.result.output.action_position')
+    POT_SIZE=$(echo "$OUTPUT" | jq -r '.result.output.pot')
 
     echo "Betting stage is ..."
     echo "$ROUND_BETS"
@@ -273,12 +274,33 @@ test_first_action() {
     echo "Checked players are ..."
     echo "$CHECKED_PLAYERS"
 
-    echo "Current active position is ..."
-    echo "$ACTIVE_PLAYER"
+    echo "Current active position is $ACTIVE_PLAYER and pot size is $POT_SIZE"
 
 
     return 0
 }
+
+
+get_game_details() {
+    # Get the game state
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+    GAME_STATE=$(echo "$OUTPUT" | jq -r '.result.output')
+    ROUND_BETS=$(echo "$OUTPUT" | jq -r '.result.output.round_bets')
+    CHECKED_PLAYERS=$(echo "$OUTPUT" | jq -r '.result.output.checked_players')
+    ACTIVE_PLAYER=$(echo "$OUTPUT" | jq -r '.result.output.action_position')
+    POT_SIZE=$(echo "$OUTPUT" | jq -r '.result.output.pot')
+    GAMEPHASE=$(echo "$OUTPUT" | jq -r '.result.output.phase')
+
+    echo "Betting stage is ..."
+    echo "$ROUND_BETS"
+
+    echo "Checked players are ..."
+    echo "$CHECKED_PLAYERS"
+
+    echo "Current active position is $ACTIVE_PLAYER and pot size is $POT_SIZE"
+    echo "Game phase is $GAMEPHASE"
+}
+
 
 test_first_betting_round() {
     #Second player action
@@ -291,7 +313,7 @@ test_first_betting_round() {
     if [[ -n "$ERROR_DATA" ]]; then
         # Extract the array of ASCII values and convert to plain text
         ASCII_ARRAY=$(echo "$ERROR_DATA" | grep -o '\[.*\]')
-        PLAIN_TEXT=$(echo "$ASCII_ARRAY" | jq -r '.[]' | awk '{printf "%c", $1}')
+        PLAIN_TEXT=$(echo "$ASCII_ARRAY" | jq -r '.[]' | awk '{printf "%c", $1}' | xargs)
         if [[ "$PLAIN_TEXT" == "Cannot bet when there's a bet" ]]; then
             echo "Cannot bet after betting is working"
         else
@@ -301,12 +323,101 @@ test_first_betting_round() {
     fi
 
     # Sending correct player action
+    echo "Player 2 raises to 4"
     meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"action\":{\"Raise\":4}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+    # Get the game state
+    get_game_details
 
+    # Doing the action of third player
+    echo "Player 3 raises to 8"
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":2,\"action\":{\"Raise\":8}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+    # Get the game state
+    get_game_details
 
+    # Doing the action of fourth player
+    echo "Player 4 calls 8"
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":3,\"action\":\"Call\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    # Player 1 folds
+    echo "Player 1 folds"
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":0,\"action\":\"Fold\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    # Player 2 calls
+    echo "Player 2 calls 8"
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"action\":\"Call\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
     return 0
 
+}
 
+
+test_flop_round() {
+    echo "=======================Player 2 Bets 10 chips============================="
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"action\":{\"Bet\":10}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    echo "========================Player 3 raises to 20 chips========================"
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":2,\"action\":{\"Raise\":20}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    echo "========================Player 4 calls 20 chips==========================="
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":3,\"action\":\"Call\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    echo "========================Player 2 calls 20 chips (10 more chips)==========================="
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"action\":\"Call\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details # The game phase should be turn now
+}
+
+test_turn_round() {
+    echo "=======================Player 2 Bets 20 chips============================="
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"action\":{\"Bet\":20}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    echo "========================Player 3 raises to 40 chips========================"
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":2,\"action\":{\"Raise\":40}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    echo "========================Player 4 folds==========================="
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":3,\"action\":\"Fold\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    echo "========================Player 2 calls 40 chips (adding 20 more chips)==========================="
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"action\":\"Call\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details # The game phase should be river now
+}
+
+test_river_round() {
+    echo "=======================Plyer 2 checks============================="
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"action\":\"Check\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    echo "========================Player 3 bets 50 chips========================"
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":2,\"action\":{\"Bet\":50}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details
+
+    echo "========================Player 2 calls 50 chips (adding 50 chips)==========================="
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"action\":\"Call\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    get_game_details # The game phase should be showdown now
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+    WINNER=$(echo "$OUTPUT" | jq -r '.result.output.winner')
+    echo "Winner is $WINNER"
 }
 
 
@@ -326,6 +437,9 @@ main() {
     run_test set_testing_cards
     run_test test_first_action
     run_test test_first_betting_round
+    run_test test_flop_round
+    run_test test_turn_round
+    run_test test_river_round
 
     echo ""
     echo "Test Summary:"
