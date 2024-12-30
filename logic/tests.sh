@@ -62,89 +62,254 @@ test_set_active_player() {
     fi
 }
 
-# Test to check if get_players is working
-test_get_players() {
-    local method_name="get_players"
-    local expected_output="[]"
-
-    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" "$method_name")
-    RETURN_VALUE=$(echo "$OUTPUT" | jq -r '.result.output')
-
-    if [[ "$RETURN_VALUE" == "$expected_output" ]]; then
-        return 0
-    else
-        echo "Expected $expected_output, but got $RETURN_VALUE"
-        return 1
-    fi
-}
-
-# Test to check if get_community_cards is working
-test_get_community_cards() {
-    local method_name="get_community_cards"
-    local expected_output="[]"
-
-    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" "$method_name")
-    RETURN_VALUE=$(echo "$OUTPUT" | jq -r '.result.output')
-
-    if [[ "$RETURN_VALUE" == "$expected_output" ]]; then
-        return 0
-    else
-        echo "Expected $expected_output, but got $RETURN_VALUE"
-        return 1
-    fi
-}
-
-# Test to check if get_phase is working
-test_get_phase() {
-    local method_name="get_phase"
-    local expected_output="Waiting"
-
-    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" "$method_name")
-    RETURN_VALUE=$(echo "$OUTPUT" | jq -r '.result.output')
-
-    if [[ "$RETURN_VALUE" == "$expected_output" ]]; then
-        return 0
-    else
-        echo "Expected $expected_output, but got $RETURN_VALUE"
-        return 1
-    fi
-}
-
 # Test to check if join_game is working
-test_join_game() {
-    local method_name="join_game"
-    local public_key="test_public_key"
+test_join_game_initial() {
 
-    # Join the game
-    meroctl --node-name "$NODE_NAME" call --args "{\"public_key\": \"$public_key\"}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" "$method_name"
+    # Joining the first player
+    meroctl  --node-name "$NODE_NAME" call --args "{\"request\":{\"public_key\": \"$MEMBER_PUBLIC_KEY\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" join_game
 
-    # Retrieve players to verify
-    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_players)
-    RETURN_VALUE=$(echo "$OUTPUT" | jq -r '.result.output')
-
-    if [[ "$RETURN_VALUE" == *"$public_key"* ]]; then
-        return 0
-    else
-        echo "Expected player with public key $public_key, but got $RETURN_VALUE"
+    #Get game state
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+    PLAYERS=$(echo "$OUTPUT" | jq -r '.result.output.players')
+    if [[ -z "$PLAYERS" ]]; then
+        echo "No players found in the game state."
         return 1
     fi
-}
+    
+    FIRST_PLAYER_PK=$(echo "$OUTPUT" | jq -r '.result.output.players[0].public_key')
 
-# Test to check if get_players is working after joining the game
-test_get_players_after_join() {
-    local method_name="get_players"
-    local public_key="test_public_key"
-
-    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" "$method_name")
-    RETURN_VALUE=$(echo "$OUTPUT" | jq -r '.result.output')
-
-    if [[ "$RETURN_VALUE" == *"$public_key"* ]]; then
+    if [[ "$FIRST_PLAYER_PK" == "$MEMBER_PUBLIC_KEY" ]] ; then
         return 0
     else
-        echo "Expected player with public key $public_key, but got $RETURN_VALUE"
+        echo "Expected $MEMBER_PUBLIC_KEY, but got $FIRST_PLAYER_PK"
         return 1
     fi
+    
 }
+
+# Join 3 other players here considering there are 3 other 
+# See currently you don't even need more than one node to test functionality, you can do that by one node only
+
+test_game_join_4players() {
+    # Joining the second player
+    meroctl  --node-name "$NODE_NAME" call --args "{\"request\":{\"public_key\": \"2222222\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" join_game
+
+    #Get game state
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+    PLAYERS=$(echo "$OUTPUT" | jq -r '.result.output.players')
+
+    PLAYER_COUNT=$(echo "$PLAYERS" | jq length)
+
+    if [[ "$PLAYER_COUNT" -ne 2 ]]; then
+        echo "Expected 2 players, but got ${#PLAYERS[@]}"
+        echo "Players: $PLAYERS"
+        return 1
+    fi
+
+    SECOND_PLAYER_PK=$(echo "$OUTPUT" | jq -r '.result.output.players[1].public_key')
+
+    if [[ "$SECOND_PLAYER_PK" == "2222222" ]] ; then
+        echo "Second player joined successfully."
+    else
+        echo "Expected 2222222, but got $SECOND_PLAYER_PK"
+        return 1
+    fi
+
+    # Joining the third player
+    meroctl  --node-name "$NODE_NAME" call --args "{\"request\":{\"public_key\": \"3333333\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" join_game
+
+    #Get game state
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+    PLAYERS=$(echo "$OUTPUT" | jq -r '.result.output.players')
+
+    PLAYER_COUNT=$(echo "$PLAYERS" | jq length)
+
+    if [[ "$PLAYER_COUNT" -ne 3 ]]; then
+        echo "Expected 3 players, but got $PLAYER_COUNT"
+        return 1
+    fi
+
+    THIRD_PLAYER_PK=$(echo "$OUTPUT" | jq -r '.result.output.players[2].public_key')
+
+    if [[ "$THIRD_PLAYER_PK" == "3333333" ]] ; then
+        echo "Third player joined successfully."
+    else
+        echo "Expected 3333333, but got $THIRD_PLAYER_PK"
+        return 1
+    fi
+
+    # Joining the fourth player
+    meroctl  --node-name "$NODE_NAME" call --args "{\"request\":{\"public_key\": \"4444444\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" join_game
+
+    #Get game state
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+    PLAYERS=$(echo "$OUTPUT" | jq -r '.result.output.players')
+
+    PLAYER_COUNT=$(echo "$PLAYERS" | jq length)
+
+    if [[ "$PLAYER_COUNT" -ne 4 ]]; then
+        echo "Expected 4 players, but got $PLAYER_COUNT"
+        return 1
+    fi
+
+    FOURTH_PLAYER_PK=$(echo "$OUTPUT" | jq -r '.result.output.players[3].public_key')
+
+    if [[ "$FOURTH_PLAYER_PK" == "4444444" ]] ; then
+        echo "Fourth player joined successfully."
+    else
+        echo "Expected 4444444, but got $FOURTH_PLAYER_PK"
+        return 1
+    fi
+
+    return 0
+}
+
+# Now play a game with 4 players
+
+# Starting the game
+test_start_game() {
+    meroctl  --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" start_game
+
+    #Get game state
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+    GAME_STATE=$(echo "$OUTPUT" | jq -r '.result.output')
+    PLAYERS=$(echo "$OUTPUT" | jq -r '.result.output.players')
+    COMM_CARDS=$(echo "$OUTPUT" | jq -r '.result.output.community_cards')
+
+    echo "Players are ..."
+    echo "$PLAYERS"
+
+    echo "Community cards are ..."
+    echo "$COMM_CARDS"
+
+    return 0
+
+    
+}
+
+set_testing_cards() {
+    
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":0,\"cards\":[{\"suit\":\"Spades\",\"rank\":\"Ace\"},{\"suit\":\"Hearts\",\"rank\":\"Seven\"}]}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" set_player_cards
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"cards\":[{\"suit\":\"Diamonds\",\"rank\":\"King\"},{\"suit\":\"Clubs\",\"rank\":\"Ten\"}]}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" set_player_cards
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":2,\"cards\":[{\"suit\":\"Hearts\",\"rank\":\"Queen\"},{\"suit\":\"Spades\",\"rank\":\"Jack\"}]}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" set_player_cards
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":3,\"cards\":[{\"suit\":\"Diamonds\",\"rank\":\"Nine\"},{\"suit\":\"Hearts\",\"rank\":\"Eight\"}]}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" set_player_cards
+
+    # Set the community cards
+    meroctl --node-name "$NODE_NAME" call --args "{\"cards\":[{\"suit\":\"Hearts\",\"rank\":\"Ace\"},{\"suit\":\"Hearts\",\"rank\":\"King\"},{\"suit\":\"Spades\",\"rank\":\"Nine\"},{\"suit\":\"Hearts\",\"rank\":\"Ten\"},{\"suit\":\"Hearts\",\"rank\":\"Jack\"}]}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" set_community_cards
+
+    # Get the game state
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+    COMMUNITY_CARDS=$(echo "$OUTPUT" | jq -r '.result.output.community_cards')
+
+    # Expected community cards
+    EXPECTED_CARDS='[{"rank":"Ace","suit":"Hearts"},{"rank":"King","suit":"Hearts"},{"rank":"Nine","suit":"Spades"},{"rank":"Ten","suit":"Hearts"},{"rank":"Jack","suit":"Hearts"}]'
+
+    # Parse both expected and actual community cards to JSON and compare
+    EXPECTED_CARDS_JSON=$(echo "$EXPECTED_CARDS" | jq -c .)
+    COMMUNITY_CARDS_JSON=$(echo "$COMMUNITY_CARDS" | jq -c .)
+
+    if [[ "$COMMUNITY_CARDS_JSON" == "$EXPECTED_CARDS_JSON" ]]; then
+        echo "Community cards are set correctly." # This is happening now
+    else
+        echo "Community cards do not match the expected values."
+        echo "Expected: $EXPECTED_CARDS_JSON"
+        echo "Got: $COMMUNITY_CARDS_JSON"
+        return 1
+    fi
+
+    # Get the player cards
+    for i in {0..3}; do
+        #Get game state
+        OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+        PLAYER_CARDS=$(echo "$OUTPUT" | jq -r '.result.output.players['"$i"'].cards')
+
+        case $i in
+            0)
+                EXPECTED_CARDS='[{"rank":"Ace","suit":"Spades"},{"rank":"Seven","suit":"Hearts"}]'
+                ;;
+            1)
+                EXPECTED_CARDS='[{"rank":"King","suit":"Diamonds"},{"rank":"Ten","suit":"Clubs"}]'
+                ;;
+            2)
+                EXPECTED_CARDS='[{"rank":"Queen","suit":"Hearts"},{"rank":"Jack","suit":"Spades"}]'
+                ;;
+            3)
+                EXPECTED_CARDS='[{"rank":"Nine","suit":"Diamonds"},{"rank":"Eight","suit":"Hearts"}]'
+                ;;
+        esac
+
+        EXPECTED_CARDS_JSON=$(echo "$EXPECTED_CARDS" | jq -c .)
+        PLAYER_CARDS_JSON=$(echo "$PLAYER_CARDS" | jq -c .)
+
+        if [[ "$PLAYER_CARDS_JSON" == "$EXPECTED_CARDS_JSON" ]]; then
+            echo "Player $i cards are set correctly."
+        else
+            echo "Player $i cards do not match the expected values."
+            echo "Expected: $EXPECTED_CARDS_JSON"
+            echo "Got: $PLAYER_CARDS_JSON"
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+# Now statrt playing turns
+
+test_first_action() {
+    # First player action
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":0,\"action\":{\"Bet\":2}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+    # Get the game state
+    OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
+    GAME_STATE=$(echo "$OUTPUT" | jq -r '.result.output')
+    ROUND_BETS=$(echo "$OUTPUT" | jq -r '.result.output.round_bets')
+    CHECKED_PLAYERS=$(echo "$OUTPUT" | jq -r '.result.output.checked_players')
+    ACTIVE_PLAYER=$(echo "$OUTPUT" | jq -r '.result.output.action_position')
+
+    echo "Betting stage is ..."
+    echo "$ROUND_BETS"
+
+    echo "Checked players are ..."
+    echo "$CHECKED_PLAYERS"
+
+    echo "Current active position is ..."
+    echo "$ACTIVE_PLAYER"
+
+
+    return 0
+}
+
+test_first_betting_round() {
+    #Second player action
+
+    # Capture the response
+    BET_RESPONSE=$(meroctl --node-name "$NODE_NAME" --output-format json call --args "{\"request\":{\"player_index\":1,\"action\":{\"Bet\":2}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action)
+
+    # Check if there is an error in the response
+    ERROR_DATA=$(echo "$BET_RESPONSE" | jq -r '.error.data // empty')
+    if [[ -n "$ERROR_DATA" ]]; then
+        # Extract the array of ASCII values and convert to plain text
+        ASCII_ARRAY=$(echo "$ERROR_DATA" | grep -o '\[.*\]')
+        PLAIN_TEXT=$(echo "$ASCII_ARRAY" | jq -r '.[]' | awk '{printf "%c", $1}')
+        if [[ "$PLAIN_TEXT" == "Cannot bet when there's a bet" ]]; then
+            echo "Cannot bet after betting is working"
+        else
+            echo "Expected error: \"Cannot bet when there's a bet\", got error: $PLAIN_TEXT"
+            return 1
+        fi
+    fi
+
+    # Sending correct player action
+    meroctl --node-name "$NODE_NAME" call --args "{\"request\":{\"player_index\":1,\"action\":{\"Raise\":4}}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" process_action
+
+
+    return 0
+
+
+}
+
+
 
 # Add more test functions as needed...
 
@@ -155,11 +320,12 @@ main() {
     # Add your test functions here
     run_test test_get_active_player
     run_test test_set_active_player
-    run_test test_get_players
-    run_test test_get_community_cards
-    run_test test_get_phase
-    run_test test_join_game
-    run_test test_get_players_after_join
+    run_test test_join_game_initial
+    run_test test_game_join_4players
+    run_test test_start_game
+    run_test set_testing_cards
+    run_test test_first_action
+    run_test test_first_betting_round
 
     echo ""
     echo "Test Summary:"
