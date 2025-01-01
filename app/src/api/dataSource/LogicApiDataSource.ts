@@ -22,6 +22,8 @@ import {
   SendProposalMessageRequest,
   SendProposalMessageResponse,
   GetActivePlayerRequest,
+  GetGameStateRequest,
+  GetGameStateResponse,
 } from '../clientApi';
 import { getContextId, getNodeUrl } from '../../utils/node';
 import {
@@ -286,6 +288,45 @@ export class LogicApiDataSource implements ClientApi {
 
   }
 
+  async getGameState(
+    request: GetGameStateRequest,
+  ): ApiResponse<GetGameStateResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const params: RpcQueryParams<GetGameStateRequest> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.GET_GAME_STATE,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    }
+
+    const response = await getJsonRpcClient().query<
+      GetGameStateRequest,
+      GetGameStateResponse
+    >(params, config);
+
+    // console.log('Response recieved from logicapi', response);
+
+    if (response?.error) {
+      return await this.handleError(
+        response.error,
+        {},
+        this.getGameState,
+      );
+    }
+
+    let getGameStateResponse: GetGameStateResponse = {
+      game_state: response?.result?.output,
+    } as GetGameStateResponse;
+
+    return {
+      data: getGameStateResponse,
+      error: null
+    }
+  }
 
 
   async sendProposalMessage(

@@ -290,12 +290,16 @@ get_game_details() {
     ACTIVE_PLAYER=$(echo "$OUTPUT" | jq -r '.result.output.action_position')
     POT_SIZE=$(echo "$OUTPUT" | jq -r '.result.output.pot')
     GAMEPHASE=$(echo "$OUTPUT" | jq -r '.result.output.phase')
+    PLAYERS_MOVE=$(echo "$OUTPUT" | jq -r '.result.output.players')
 
     echo "Betting stage is ..."
     echo "$ROUND_BETS"
 
     echo "Checked players are ..."
     echo "$CHECKED_PLAYERS"
+
+    echo "Moves are ..."
+    echo "$PLAYERS_MOVE"
 
     echo "Current active position is $ACTIVE_PLAYER and pot size is $POT_SIZE"
     echo "Game phase is $GAMEPHASE"

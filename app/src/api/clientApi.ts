@@ -23,6 +23,12 @@ export interface GetActivePlayerResponse {
   active_player: number;
 }
 
+export interface GetGameStateRequest {}
+
+export interface GetGameStateResponse {
+  game_state: any;
+}
+
 
 export interface SendProposalMessageRequest {
   // proposalId: String;
@@ -103,6 +109,7 @@ export enum ClientMethod {
   APPROVE_PROPOSAL = 'approve_proposal',
   SET_ACTIVE_PLAYER = 'set_active_player',
   GET_ACTIVE_PLAYER = 'get_active_player',
+  GET_GAME_STATE = 'get_game_state',
 }
 
 export interface ClientApi {

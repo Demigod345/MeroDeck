@@ -12,6 +12,7 @@ use calimero_sdk::app;
 #[borsh(crate = "calimero_sdk::borsh")]
 pub struct GameState {
     // Need to store which player is active currently
+    // round_moves: Vec<String>, //Or maybe append this to player only
     active_player: u32,
     players: Vec<Player>,
     community_cards: Vec<Card>, // Will be encrypted later
@@ -31,6 +32,7 @@ pub struct GameState {
 #[borsh(crate = "calimero_sdk::borsh")]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct Player {
+    round_move: Option<String>,
     public_key: String,
     chips: u64,
     cards: Vec<Card>,  // Will be encrypted later
@@ -260,6 +262,7 @@ impl GameState {
 
         // Add player to the game
         self.players.push(Player {
+            round_move: None,
             public_key: public_key,
             chips: 1000,
             cards: Vec::new(),
@@ -345,11 +348,13 @@ impl GameState {
                     return Err(Error::msg("Cannot check when there's a bet"));
                 }
                 self.checked_positions.push(player_index);
+                self.players[player_index].round_move = Some("Check".to_string());
                 // This looks good
             },
             PlayerAction::Fold => {
                 
                 player.is_folded = true;
+                self.players[player_index].round_move = Some("Fold".to_string());
 
                 // Check if all but one player has folded
                 let active_players: Vec<_> = self.players.iter()
@@ -377,8 +382,10 @@ impl GameState {
                     return Err(Error::msg("Insufficient chips"));
                 }
 
+                
                 player.chips -= amount;
                 player.current_bet += amount;
+                self.players[player_index].round_move = Some(format!("Bet {}", amount));
                 self.current_bet = Some(amount);
                 self.round_bets[player_index] = amount;
                 self.pot += amount;
@@ -396,6 +403,7 @@ impl GameState {
 
                 player.chips -= amount_to_call;
                 player.current_bet += amount_to_call;
+                self.players[player_index].round_move = Some(format!("Call {}", amount_to_call));
                 self.round_bets[player_index] = current_bet;
                 self.pot += amount_to_call;
 
@@ -422,6 +430,7 @@ impl GameState {
 
                 player.chips -= amount_to_raise;
                 player.current_bet = new_bet;
+                self.players[player_index].round_move = Some(format!("Raise {}", amount_to_raise));
                 self.current_bet = Some(new_bet);
                 self.round_bets[player_index] = new_bet;
                 self.pot += amount_to_raise;
@@ -499,6 +508,11 @@ impl GameState {
         // self.last_raise_position = None;
         self.checked_positions.clear();
         self.round_bets = vec![0; self.players.len()];
+        for player in self.players.iter_mut() {
+            if !player.is_folded {
+                player.round_move = None;
+            }
+        }
 
         match self.phase {
             GamePhase::PreFlop => {
@@ -764,172 +778,7 @@ impl GameState {
 
 
 
-    // Creating a new proposal
-    // pub fn create_new_proposal(
-    //     &mut self,
-    //     request: CreateProposalRequest,
-    // ) -> Result<ProposalId, Error> {
-
-    //     // Logs into the node?
-    //     env::log("Starting create_new_proposal");
-    //     env::log(&format!("Request type: {}", request.action_type));
-
-
-
-    //     let proposal_id = match request.action_type.as_str() {
-    //         "ExternalFunctionCall" => {
-    //             env::log("Processing ExternalFunctionCall");
-
-    //             // Parsing happens in this specific format
-    //             let receiver_id = request.params["receiver_id"]
-    //                 .as_str()
-    //                 .ok_or_else(|| Error::msg("receiver_id is required"))?;
-    //             let method_name = request.params["method_name"]
-    //                 .as_str()
-    //                 .ok_or_else(|| Error::msg("method_name is required"))?;
-    //             let args = request.params["args"]
-    //                 .as_str()
-    //                 .ok_or_else(|| Error::msg("args is required"))?;
-    //             let deposit = request.params["deposit"]
-    //                 .as_str()
-    //                 .ok_or_else(|| Error::msg("deposit is required"))?
-    //                 .parse::<u128>()?;
-    //             let gas = request.params["gas"]
-    //                 .as_str()
-    //                 .map(|g| g.parse::<u64>())
-    //                 .transpose()?
-    //                 .unwrap_or(30_000_000_000_000);
-
-    //             env::log(&format!(
-    //                 "Parsed values: receiver_id={}, method_name={}, args={}, deposit={}, gas={}",
-    //                 receiver_id, method_name, args, deposit, gas
-    //             ));
-                
-    //             // What specifically is external? and propose()
-    //             Self::external()
-    //                 .propose()
-    //                 .external_function_call(
-    //                     receiver_id.to_string(),
-    //                     method_name.to_string(),
-    //                     args.to_string(),
-    //                     deposit,
-    //                     gas,
-    //                 )
-    //                 .send()
-    //         }
-    //         "Transfer" => {
-    //             env::log("Processing Transfer");
-    //             let receiver_id = request.params["receiver_id"]
-    //                 .as_str()
-    //                 .ok_or_else(|| Error::msg("receiver_id is required"))?;
-    //             let amount = request.params["amount"]
-    //                 .as_str()
-    //                 .ok_or_else(|| Error::msg("amount is required"))?
-    //                 .parse::<u128>()?;
-
-    //             Self::external()
-    //                 .propose()
-    //                 .transfer(AccountId(receiver_id.to_string()), amount)
-    //                 .send()
-    //         }
-    //         "SetContextValue" => {
-    //             env::log("Processing SetContextValue");
-    //             let key = request.params["key"]
-    //                 .as_str()
-    //                 .ok_or_else(|| Error::msg("key is required"))?
-    //                 .as_bytes()
-    //                 .to_vec()
-    //                 .into_boxed_slice();
-    //             let value = request.params["value"]
-    //                 .as_str()
-    //                 .ok_or_else(|| Error::msg("value is required"))?
-    //                 .as_bytes()
-    //                 .to_vec()
-    //                 .into_boxed_slice();
-
-    //             Self::external()
-    //                 .propose()
-    //                 .set_context_value(key, value)
-    //                 .send()
-    //         }
-    //         "SetNumApprovals" => Self::external()
-    //             .propose()
-    //             .set_num_approvals(
-    //                 request.params["num_approvals"]
-    //                     .as_u64()
-    //                     .ok_or(Error::msg("num_approvals is required"))? as u32,
-    //             )
-    //             .send(),
-    //         "SetActiveProposalsLimit" => Self::external()
-    //             .propose()
-    //             .set_active_proposals_limit(
-    //                 request.params["active_proposals_limit"]
-    //                     .as_u64()
-    //                     .ok_or(Error::msg("active_proposals_limit is required"))?
-    //                     as u32,
-    //             )
-    //             .send(),
-    //         "DeleteProposal" => Self::external()
-    //             .propose()
-    //             .delete(ProposalId(
-    //                 hex::decode(
-    //                     request.params["proposal_id"]
-    //                         .as_str()
-    //                         .ok_or_else(|| Error::msg("proposal_id is required"))?,
-    //                 )?
-    //                 .try_into()
-    //                 .map_err(|_| Error::msg("Invalid proposal ID length"))?,
-    //             ))
-    //             .send(),
-    //         _ => return Err(Error::msg("Invalid action type")),
-    //     };
-
-    //     env::emit(&Event::ProposalCreated { id: proposal_id });
-
-    //     let old = self.messages.insert(proposal_id, Vector::new())?;
-    //     if old.is_some() {
-    //         return Err(Error::msg("proposal already exists"));
-    //     }
-
-    //     Ok(proposal_id)
-    // }
-
-    // pub fn approve_proposal(&self, proposal_id: ProposalId) -> Result<(), Error> {
-    //     // fixme: should we need to check this?
-    //     // self.messages
-    //     //     .get(&proposal_id)?
-    //     //     .ok_or(Error::msg("proposal not found"))?;
-
-    //     Self::external().approve(proposal_id);
-
-    //     env::emit(&Event::ApprovedProposal { id: proposal_id });
-
-    //     Ok(())
-    // }
-
-    // pub fn get_proposal_messages(&self, proposal_id: ProposalId) -> Result<Vec<Message>, Error> {
-    //     let Some(msgs) = self.messages.get(&proposal_id)? else {
-    //         return Ok(vec![]);
-    //     };
-
-    //     let entries = msgs.entries()?;
-
-    //     Ok(entries.collect())
-    // }
-
-    // pub fn send_proposal_messages(
-    //     &mut self,
-    //     proposal_id: ProposalId,
-    //     message: Message,
-    // ) -> Result<(), Error> {
-    //     let mut messages = self.messages.get(&proposal_id)?.unwrap_or_default();
-
-    //     messages.push(message)?;
-
-    //     self.messages.insert(proposal_id, messages)?;
-
-    //     Ok(())
-    // }
+    
 }
 
 #[cfg(test)]

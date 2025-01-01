@@ -1,0 +1,132 @@
+.tableContainer {
+    position: relative;
+    padding: 20px;
+  }
+  
+  .table {
+    position: relative;
+    width: 800px;
+    height: 400px;
+    margin: 50px auto;
+    background-color: #1e2e1e;
+    border: 2px solid #2a3a2a;
+    border-radius: 200px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  }
+  
+  .potSize {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 1.8rem;
+    z-index: 2;
+  }
+
+  .winner {
+    /* position: absolute; */
+    /* top: 0; */
+    /* left: 50%; */
+    /* transform: translateX(-50%); */
+    color: white;
+    font-size: 1.2rem;
+    /* z-index: 2; */
+  }
+
+  .communityCards {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    gap: 10px;
+  }
+  
+  .playerPosition {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .playerCards {
+    display: flex;
+    gap: 10px;
+  }
+
+  .folded{
+    opacity: 0.3;
+  }
+
+  .playerAction {
+    background-color: #9fff00;
+    border-radius: 4px;
+    color: #1c1c1c;
+    padding-left: 20px;
+    font-weight: bold;
+  }
+  
+  .playerPosition.player1 {
+    bottom: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .playerPosition.player2 {
+    bottom: 20px;
+    right: -30px;
+  }
+  
+  .playerPosition.player3 {
+    top: 30px;
+    right: -30px;
+  }
+  
+  .playerPosition.player4 {
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .playerPosition.player5 {
+    top: 30px;
+    left: -30px;
+  }
+
+  .playerPosition.player6 {
+    bottom:20px;
+    left: -30px;
+  }
+  
+  .card {
+    width: 60px;
+    height: 90px;
+    background: linear-gradient(135deg, #1c1c1c, #192900);
+    border-radius: 5px;
+    border: 1px solid #3a5808;
+    padding: 10px;
+    display: flex;
+    gap: 5px;
+  }
+
+  .cardtext {
+    color: #9fff00;
+    font-size: 1.5rem;
+  }
+  
+  .emptyCard {
+    width: 60px;
+    height: 90px;
+    border: 2px dashed #444;
+    background-color: #161616;
+    border-radius: 5px;
+  }
+  
+  .playerName {
+    color: white;
+    font-size: 1.2rem;
+    text-align: center;
+    /* white-space: nowrap; */
+  }
+  
