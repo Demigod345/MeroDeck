@@ -4,6 +4,7 @@ import { LogicApiDataSource } from '../../api/dataSource/LogicApiDataSource';
 import { ResponseData } from '@calimero-is-near/calimero-p2p-sdk';
 import { getConfigAndJwt } from '../../api/dataSource/LogicApiDataSource';
 import { useNavigate } from 'react-router-dom';
+import styles from '../../styles/JoinGame.module.css';
 
 
 export default function Join() {
@@ -78,10 +79,10 @@ export default function Join() {
   };
 
   return (
-    <div>
+    <div className={styles.formContainer}>
       <h1>Join Game</h1>
-      <form onSubmit={handleSubmit}>
-        <div>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <div className={styles.inputFieldContainer}>
           <label htmlFor="playerName">Player Name:</label>
           <input
             type="text"
@@ -89,6 +90,7 @@ export default function Join() {
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
             required
+            className={styles.inputField}
           />
         </div>
         <div>
@@ -99,9 +101,10 @@ export default function Join() {
             value={chips}
             onChange={(e) => setChips(e.target.value)}
             required
+            className={styles.inputField}
           />
         </div>
-        <button type="submit">Join Game</button>
+        <button type="submit" className={styles.submitButton}>Join Game</button>
       </form>
     </div>
   );

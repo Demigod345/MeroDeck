@@ -28,6 +28,8 @@ import {
   CreateActionResponse,
   JoinGameRequest,
   JoinGameResponse,
+  startGameRequest,
+  startGameResponse,
 } from '../clientApi';
 import { getContextId, getNodeUrl } from '../../utils/node';
 import {
@@ -150,6 +152,41 @@ export class LogicApiDataSource implements ClientApi {
 
     return {
       data: response.result.output as JoinGameResponse,
+      error: null,
+    };
+  }
+
+  async startGame(
+    request: startGameRequest,
+  ): ApiResponse<startGameResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const params: RpcQueryParams<startGameRequest> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.START_GAME,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+      startGameRequest,
+      startGameResponse
+    >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.joinGame);
+    }
+
+    return {
+      data: response.result.output as startGameResponse,
       error: null,
     };
   }

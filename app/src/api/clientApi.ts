@@ -143,6 +143,7 @@ export enum ClientMethod {
   GET_GAME_STATE = 'get_game_state',
   CREATE_ACTION = 'process_action',
   JOIN_GAME = 'join_game',
+  START_GAME = 'start_game',
 }
 
 export interface ClientApi {

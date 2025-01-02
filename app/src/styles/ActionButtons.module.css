@@ -38,9 +38,27 @@
     cursor: pointer;
     transition: background-color 0.3s;
 }
+
+.startgamebutton {
+    padding: 10px 30px;
+    min-width: 150px;
+    min-height: 60px;
+    font-size: 1.2rem;
+    background: none;
+    border: #9fff00 2px solid;
+    color: #9fff00;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
   
 .button:hover {
     background-color: #78c201;
+    color: black;
+}
+
+.startgamebutton:hover {
+    background-color: #9fff00;
+    color: black;
 }
   
   

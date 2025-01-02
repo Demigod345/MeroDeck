@@ -92,6 +92,15 @@ export default function PokerTable() {
     },
   ])
   const[potSize, setPotSize] = useState<number>(0)
+  const[winner, setWinner] = useState<string>('')
+
+
+  //Will have to see if this works midway of game or not
+  useEffect(() => {
+    if (winner) {
+      window.alert(`Winner is ${winner}`);
+    }
+  }, [winner])
 
 
   //get player index from local storage
@@ -127,7 +136,7 @@ export default function PokerTable() {
       window.alert(`${result.error.message}`);
       return;
     }
-    console.log("Recieved data on frontend", result)
+    // console.log("Recieved data on frontend", result)
     // setActivePlayer(result.data?.active_player ?? null);
   }
 
@@ -141,18 +150,23 @@ export default function PokerTable() {
       window.alert(`${result.error.message}`);
       return;
     }
-    console.log("Recieved data on frontend", result)
+    // console.log("Recieved data on frontend", result)
     const players = result.data?.game_state.players;
     const potSize = result.data?.game_state.pot;
 
     setPotSize(potSize);
+
+    // Setting the current player position
+    setCurrentPosition(result.data?.game_state.action_position);
+
 
     const gamePhase = result.data?.game_state.phase;
 
     const winner = result.data?.game_state.winner;
 
     if (winner) {
-      console.log("Winner is", winner)
+      // console.log("Winner is", winner)
+      setWinner(players[winner].player_name);
       // window.alert(`Winner is ${winner}`);
     }
 
@@ -205,7 +219,7 @@ export default function PokerTable() {
     // Setting the players data name and cards through this array replication
     const playersDatam = [...playersData];
 
-    console.log("Players data copy is", playersDatam);
+    // console.log("Players data copy is", playersDatam);
     // Seeting name for all the players
     for (let i = 0; i < players.length; i++) {
       // if (players[i].player_name){
@@ -213,7 +227,7 @@ export default function PokerTable() {
       // }
 
       if (players[i]) {
-        console.log("Player connected with index", i)
+        // console.log("Player connected with index", i)
         playersDatam[i].name = players[i].player_name;
       }
       if (players[i].round_move) {
@@ -247,7 +261,7 @@ export default function PokerTable() {
     }
     }
     
-    console.log("Players data", playersDatam)
+    // console.log("Players data", playersDatam)
     setPlayersData(playersDatam);
   }
 
@@ -347,16 +361,17 @@ export default function PokerTable() {
 
   const renderPlayer = (player: PlayerData) => {
     // Should render two cards and player name
+    const currentplayerclass = (currentposition == player.id -1) ? styles.current : '';
     const playerposition = player.id;
     const positionClass = "player" + playerposition;
     const cards = player.cards;
     const playername = (thisplayerindex == player.id - 1) ? player.name + " (You)" : player.name;
     const playermove = player.move;
-    const foldclass = (playermove == 'Fold') ? styles.folded : '';
+    const foldclass = (playermove == 'Fold' || playername == "Not connected" || playername == "Not connected (You)") ? styles.folded : '';
     return(
     <div
       key={player.id}
-      className={`${styles.playerPosition} ${styles[`player${playerposition}`] } ${foldclass}`}
+      className={`${styles.playerPosition} ${styles[`player${playerposition}`] } ${foldclass} ${currentplayerclass}` }
     > 
       <div className={styles.playerAction}>{playermove}</div>
       {/* <div className={styles.playerAction}>CALL</div> */}

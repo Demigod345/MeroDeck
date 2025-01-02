@@ -4,6 +4,8 @@ import styles from '../styles/ActionButtons.module.css'
 import {
   CreateActionRequest,
   CreateActionResponse,
+  startGameRequest,
+  startGameResponse,
 } from '../api/clientApi';
 import { ResponseData } from '@calimero-is-near/calimero-p2p-sdk';
 import { LogicApiDataSource } from '../api/dataSource/LogicApiDataSource';
@@ -11,6 +13,9 @@ import { LogicApiDataSource } from '../api/dataSource/LogicApiDataSource';
 
 export default function ActionButtons() {
   const [amount, setAmount] = React.useState(50);
+
+  //get player index from local storage
+  const playerIndex = localStorage.getItem('playerIndex');
 
 
   // Setting functions ========================
@@ -25,6 +30,18 @@ export default function ActionButtons() {
     }
 
     console.log('Action created', result.data);
+  }
+
+  async function startgame(request: startGameRequest) {
+
+    const result: ResponseData<startGameResponse> = 
+      await new LogicApiDataSource().startGame(request);
+
+    if (result.error) {
+      console.error('Error starting game', result.error);
+    }
+
+    window.alert('Game started');
   }
 
 
@@ -45,32 +62,38 @@ export default function ActionButtons() {
         
         <div className={styles.actionbuttons}>
           <button 
+            className={styles.startgamebutton}
+            onClick={() => startgame({request:{}})}
+          >
+              Start Game
+          </button>
+          <button 
             className={styles.button}
-            onClick={() => makeAction({request:{ action: 'Check', player_index: 0 }})}
+            onClick={() => makeAction({request:{ action: 'Check', player_index: playerIndex ? Number(playerIndex) : 0 }})}
           >
               Check
           </button>
           <button 
             className={styles.button} 
-            onClick={() => makeAction({request:{ action: 'Fold', player_index: 0 }})}
+            onClick={() => makeAction({request:{ action: 'Fold', player_index: playerIndex ? Number(playerIndex) : 0 }})}
           >
             Fold
           </button>
           <button 
             className={styles.button} 
-            onClick={() => makeAction({request:{ action: 'Call', player_index: 0 }})}
+            onClick={() => makeAction({request:{ action: 'Call', player_index: playerIndex ? Number(playerIndex) : 0 }})}
           >
             Call
           </button>
           <button 
             className={styles.button} 
-            onClick={() => makeAction({request:{ action: {'Raise': amount}, player_index: 0 }})}
+            onClick={() => makeAction({request:{ action: {'Raise': amount}, player_index: playerIndex ? Number(playerIndex) : 0 }})}
           >
             Raise
           </button>
           <button 
             className={styles.button} 
-            onClick={() => makeAction({request:{ action: {'Bet': amount}, player_index: 0 }})}
+            onClick={() => makeAction({request:{ action: {'Bet': amount}, player_index: playerIndex ? Number(playerIndex) : 0 }})}
           >
             Bet
           </button>
