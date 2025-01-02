@@ -30,6 +30,37 @@ export interface GetGameStateResponse {
 }
 
 
+
+export interface CreateActionRequest {
+  request: CreateActionRequestBody;
+}
+
+export interface CreateActionRequestBody {
+  action: string | { [key: string]: number };
+  player_index: number;
+}
+
+export interface CreateActionResponse {}
+
+export interface JoinGameRequest {
+  request: JoinGameRequestBody;
+}
+
+export interface JoinGameRequestBody {
+  public_key: string;
+  chips: number;
+  player_name: string;
+}
+
+export interface JoinGameResponse {
+  this_player_index: number;
+}
+
+export interface startGameRequest {}
+
+export interface startGameResponse {}
+
+
 export interface SendProposalMessageRequest {
   // proposalId: String;
   proposal_id: String;
@@ -110,6 +141,8 @@ export enum ClientMethod {
   SET_ACTIVE_PLAYER = 'set_active_player',
   GET_ACTIVE_PLAYER = 'get_active_player',
   GET_GAME_STATE = 'get_game_state',
+  CREATE_ACTION = 'process_action',
+  JOIN_GAME = 'join_game',
 }
 
 export interface ClientApi {

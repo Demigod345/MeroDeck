@@ -6,6 +6,7 @@ import SetupPage from './pages/setup';
 import Authenticate from './pages/login/Authenticate'; 
 import { AccessTokenWrapper } from '@calimero-is-near/calimero-p2p-sdk';
 import { getNodeUrl } from './utils/node';
+import Join from './pages/joingame/JoinGame';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/auth" element={<Authenticate />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/play" element={<Play />} />
+          <Route path="/join" element={<Join />} />
         </Routes>
       </BrowserRouter>
     </AccessTokenWrapper>

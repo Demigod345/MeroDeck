@@ -32,6 +32,12 @@ echo "Starting node2 ..."
 merod --node-name $NEW_NODE_NAME run >/dev/null 2>&1 &
 sleep 5
 
+
+# Installing application on second node
+echo "Installing application on node2 ..."
+APP_ID=$(meroctl --node-name $NODE_NAME app install --path /home/hawkeye/works/MeroDeck/logic/res/proxy_contract_demo.wasm | grep "id:" | awk '{print $2}')
+sleep 3
+
 echo "Generating new identity pair for node2 ..."
 OUTPUT=$(meroctl --node-name $NEW_NODE_NAME identity generate)
 NODE2_PUBLIC_KEY=$(echo "$OUTPUT" | grep "public_key:" | awk '{print $2}')

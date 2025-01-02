@@ -24,6 +24,10 @@ import {
   GetActivePlayerRequest,
   GetGameStateRequest,
   GetGameStateResponse,
+  CreateActionRequest,
+  CreateActionResponse,
+  JoinGameRequest,
+  JoinGameResponse,
 } from '../clientApi';
 import { getContextId, getNodeUrl } from '../../utils/node';
 import {
@@ -75,6 +79,82 @@ export function getConfigAndJwt() {
 }
 
 export class LogicApiDataSource implements ClientApi {
+
+
+  async createAction(
+    request: CreateActionRequest,
+  ): ApiResponse<CreateActionResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    console.log('Creating action with request:', request);
+
+    const params: RpcQueryParams<typeof request> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.CREATE_ACTION,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+      typeof request,
+      CreateActionResponse
+    >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.createAction);
+    }
+
+    return {
+      data: response.result.output as CreateActionResponse,
+      error: null,
+    };
+  }
+
+
+  async joinGame(
+    request: JoinGameRequest,
+  ): ApiResponse<JoinGameResponse> {
+    const { jwtObject, config, error } = getConfigAndJwt();
+    if (error) {
+      return { error };
+    }
+
+    const params: RpcQueryParams<JoinGameRequest> = {
+      contextId: jwtObject?.context_id ?? getContextId(),
+      method: ClientMethod.JOIN_GAME,
+      argsJson: request,
+      executorPublicKey: jwtObject.executor_public_key,
+    };
+
+    console.log('RPC params:', params);
+
+    const response = await getJsonRpcClient().execute<
+      JoinGameRequest,
+      JoinGameResponse
+    >(params, config);
+
+    console.log('Raw response:', response);
+
+    if (response?.error) {
+      console.error('RPC error:', response.error);
+      return await this.handleError(response.error, {}, this.joinGame);
+    }
+
+    return {
+      data: response.result.output as JoinGameResponse,
+      error: null,
+    };
+  }
+
+  
 
   async changePlayer(
     request: CreatePlayerChangeRequest,

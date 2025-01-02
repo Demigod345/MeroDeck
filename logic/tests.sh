@@ -66,7 +66,7 @@ test_set_active_player() {
 test_join_game_initial() {
 
     # Joining the first player
-    meroctl  --node-name "$NODE_NAME" call --args "{\"request\":{\"public_key\": \"$MEMBER_PUBLIC_KEY\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" join_game
+    meroctl  --node-name "$NODE_NAME" call --args "{\"request\":{\"public_key\": \"$MEMBER_PUBLIC_KEY\", \"chips\":1000, \"player_name\":\"player1\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" join_game
 
     #Get game state
     OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
@@ -92,7 +92,7 @@ test_join_game_initial() {
 
 test_game_join_4players() {
     # Joining the second player
-    meroctl  --node-name "$NODE_NAME" call --args "{\"request\":{\"public_key\": \"2222222\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" join_game
+    meroctl  --node-name "$NODE_NAME" call --args "{\"request\":{\"public_key\": \"2222222\", \"chips\":1000, \"player_name\":\"player2\"}}" --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" join_game
 
     #Get game state
     OUTPUT=$(meroctl --output-format json --node-name "$NODE_NAME" call --as "$MEMBER_PUBLIC_KEY" "$CONTEXT_ID" get_game_state)
@@ -461,4 +461,4 @@ main() {
 }
 
 # Run the main function
-main
+# main

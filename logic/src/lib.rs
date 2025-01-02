@@ -32,6 +32,7 @@ pub struct GameState {
 #[borsh(crate = "calimero_sdk::borsh")]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct Player {
+    player_name: String,
     round_move: Option<String>,
     public_key: String,
     chips: u64,
@@ -104,8 +105,9 @@ pub enum GamePhase {
     AllFolded,   // All but one player has folded
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, BorshDeserialize, BorshSerialize)]
 #[serde(crate = "calimero_sdk::serde")]
+#[borsh(crate = "calimero_sdk::borsh")]
 pub enum PlayerAction {
     Check,
     Bet(u64),
@@ -113,6 +115,15 @@ pub enum PlayerAction {
     Raise(u64),
     Fold,
     // AllIn, // Will be implemented later
+}
+
+#[derive(Debug, Clone, BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[borsh(crate = "calimero_sdk::borsh")]
+#[serde(crate = "calimero_sdk::serde")]
+pub struct SignedAction {
+    player_index: usize,
+    action: PlayerAction,
+    signature: Vec<u8>,
 }
 
 // Okay so here are defined the structs that will be used in the logic
@@ -176,6 +187,8 @@ pub struct ChangePlayerRequest {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(crate = "calimero_sdk::serde")]
 pub struct JoinGameRequest {
+    pub player_name: String,
+    pub chips: u64,
     pub public_key: String,
 }
 
@@ -246,7 +259,7 @@ impl GameState {
 
 
     // For joining the game
-    pub fn join_game(&mut self, request: JoinGameRequest) -> Result<(), Error> {
+    pub fn join_game(&mut self, request: JoinGameRequest) -> Result<(usize), Error> {
         // Check if player already exists
         let public_key = request.public_key;
 
@@ -262,9 +275,10 @@ impl GameState {
 
         // Add player to the game
         self.players.push(Player {
+            player_name: request.player_name,
             round_move: None,
             public_key: public_key,
-            chips: 1000,
+            chips: request.chips,
             cards: Vec::new(),
             is_folded: false,
             current_bet: 0,
@@ -273,7 +287,8 @@ impl GameState {
 
         self.round_bets.push(0);
 
-        Ok(())
+        // returns the index of the player which just joined currently
+        Ok(self.players.len() - 1)
     }
 
     pub fn start_game(&mut self) -> Result<(), Error> {
@@ -326,6 +341,12 @@ impl GameState {
         }
 
         self.community_cards = cards;
+        Ok(())
+    }
+
+    pub fn process_signed_action(&mut self, signed_action: SignedAction) -> Result<(), String> {
+        
+
         Ok(())
     }
 

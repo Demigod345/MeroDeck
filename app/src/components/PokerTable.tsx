@@ -20,9 +20,7 @@ import {
 
 interface PlayerData {
   id: number
-  player_name: string
   name: string
-  connected: boolean
   cards: Card[]
   move: string
 }
@@ -33,96 +31,76 @@ interface Card {
 }
 
 export default function PokerTable() {
-
-
-  
-
-
-
-
-
-
-
   // Defining all frontend variables ==================================
 
 
   // players will be fetched from the state if null then render not connected if not then render the player
-  const[playersData, setPlayersData] = useState<PlayerData[]>([])
+  const[playersData, setPlayersData] = useState<PlayerData[]>([
+    {
+      id: 1,
+      name: 'Not connected',
+      cards: [
+        { rank: '', suit: '' },
+        { rank: '', suit: '' },
+      ],
+      move: 'Not played',
+    },
+    {
+      id: 2,
+      name: 'Not connected',
+      cards: [
+        { rank: '', suit: '' },
+        { rank: '', suit: '' },
+      ],
+      move: 'Not played',
+    },
+    {
+      id: 3,
+      name: 'Not connected',
+      cards: [
+        { rank: '', suit: '' },
+        { rank: '', suit: '' },
+      ],
+      move: 'Not played',
+    },
+    {
+      id: 4,
+      name: 'Not connected',
+      cards: [
+        { rank: '', suit: '' },
+        { rank: '', suit: '' },
+      ],
+      move: 'Not played',
+    },
+    {
+      id: 5,
+      name: 'Not connected',
+      cards: [
+        { rank: '', suit: '' },
+        { rank: '', suit: '' },
+      ],
+      move: 'Not played',
+    },
+    {
+      id: 6,
+      name: 'Not connected',
+      cards: [
+        { rank: '', suit: '' },
+        { rank: '', suit: '' },
+      ],
+      move: 'Not played',
+    },
+  ])
   const[potSize, setPotSize] = useState<number>(0)
-  const[thisplayerindex, setThisPlayerIndex] = useState<number>(0)
-  const[currentposition, setCurrentPosition] = useState<number>(0)
 
-  useEffect(() => {
-    // Mock player data
-    setPlayersData([
-      {
-        id: 1,
-        player_name: 'Not connected',
-        name: 'Not connected',
-        connected: false,
-        cards: [
-          { rank: '', suit: '' },
-          { rank: '', suit: '' },
-        ],
-        move: 'Not played',
-      },
-      {
-        id: 2,
-        player_name: 'Not connected',
-        name: 'Not connected',
-        connected: false,
-        cards: [
-          { rank: '', suit: '' },
-          { rank: '', suit: '' },
-        ],
-        move: 'Not played',
-      },
-      {
-        id: 3,
-        player_name: 'Not connected',
-        name: 'Not connected',
-        connected: false,
-        cards: [
-          { rank: '', suit: '' },
-          { rank: '', suit: '' },
-        ],
-        move: 'Not played',
-      },
-      {
-        id: 4,
-        player_name: 'Not connected',
-        name: 'Not connected',
-        connected: false,
-        cards: [
-          { rank: '', suit: '' },
-          { rank: '', suit: '' },
-        ],
-        move: 'Not played',
-      },
-      {
-        id: 5,
-        player_name: 'Not connected',
-        name: 'Not connected',
-        connected: false,
-        cards: [
-          { rank: '', suit: '' },
-          { rank: '', suit: '' },
-        ],
-        move: 'Not played',
-      },
-      {
-        id: 6,
-        player_name: 'Not connected',
-        name: 'Not connected',
-        connected: false,
-        cards: [
-          { rank: '', suit: '' },
-          { rank: '', suit: '' },
-        ],
-        move: 'Not played',
-      },
-    ])
-  }, [])
+
+  //get player index from local storage
+  const playerIndex = localStorage.getItem('playerIndex');
+
+
+
+  const[thisplayerindex, setThisPlayerIndex] = useState<number>(playerIndex ? parseInt(playerIndex) : 0)
+  const[currentposition, setCurrentPosition] = useState<number>(0)
 
   const [communityCards, setCommunityCards] = useState<Card[]>([])
 
@@ -225,16 +203,21 @@ export default function PokerTable() {
 
 
     // Setting the players data name and cards through this array replication
-    const playersDatam = playersData;
+    const playersDatam = [...playersData];
 
-
+    console.log("Players data copy is", playersDatam);
     // Seeting name for all the players
     for (let i = 0; i < players.length; i++) {
-      if (players[i].player_name){
-        playersData[i].player_name = players[i].player_name;
+      // if (players[i].player_name){
+      //   playersDatam[i].name = players[i].player_name;
+      // }
+
+      if (players[i]) {
+        console.log("Player connected with index", i)
+        playersDatam[i].name = players[i].player_name;
       }
       if (players[i].round_move) {
-        playersData[i].move = players[i].round_move;
+        playersDatam[i].move = players[i].round_move;
       }
     }
 
@@ -264,7 +247,7 @@ export default function PokerTable() {
     }
     }
     
-    // console.log("Players data", playersDatam)
+    console.log("Players data", playersDatam)
     setPlayersData(playersDatam);
   }
 
