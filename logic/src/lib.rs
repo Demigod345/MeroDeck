@@ -350,10 +350,12 @@ impl GameState {
         Ok(())
     }
 
-    pub fn process_action(&mut self, request: ProcessActionRequest) -> Result<(), Error> {
+    // This returns the amount of increment in the pot for the contract to process
+    pub fn process_action(&mut self, request: ProcessActionRequest) -> Result<usize, Error> {
         
         let player_index = request.player_index;
         let action = request.action;
+        let mut increment: usize = 0;
         if player_index != self.action_position {
             return Err(Error::msg("Not your turn"));
         }
@@ -388,7 +390,7 @@ impl GameState {
                     // Only one player left
                     self.phase = GamePhase::AllFolded;
                     self.winner = Some(active_players[0]);
-                    return Ok(());
+                    return Ok(0);
                 }
             },
             PlayerAction::Bet(amount) => {
@@ -410,6 +412,7 @@ impl GameState {
                 self.current_bet = Some(amount);
                 self.round_bets[player_index] = amount;
                 self.pot += amount;
+                increment = amount as usize;
 
                 
             },
@@ -427,6 +430,7 @@ impl GameState {
                 self.players[player_index].round_move = Some(format!("Call {}", amount_to_call));
                 self.round_bets[player_index] = current_bet;
                 self.pot += amount_to_call;
+                increment = amount_to_call as usize;
 
             }
 
@@ -455,6 +459,7 @@ impl GameState {
                 self.current_bet = Some(new_bet);
                 self.round_bets[player_index] = new_bet;
                 self.pot += amount_to_raise;
+                increment = amount_to_raise as usize;
                 // self.last_raise_position = Some(player_index);
             }
 
@@ -462,7 +467,7 @@ impl GameState {
             
         }
         self.advance_action()?;
-        Ok(())
+        Ok(increment)
     }
 
     fn advance_action(&mut self) -> Result<(), Error> {

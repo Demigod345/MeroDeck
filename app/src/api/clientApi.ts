@@ -40,7 +40,9 @@ export interface CreateActionRequestBody {
   player_index: number;
 }
 
-export interface CreateActionResponse {}
+export interface CreateActionResponse {
+  amount_to_add: number;
+}
 
 export interface JoinGameRequest {
   request: JoinGameRequestBody;

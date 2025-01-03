@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styles from '../styles/ActionButtons.module.css'
 
 import {
@@ -10,9 +10,29 @@ import {
 import { ResponseData } from '@calimero-is-near/calimero-p2p-sdk';
 import { LogicApiDataSource } from '../api/dataSource/LogicApiDataSource';
 
+import { RpcProvider, Contract, WalletAccount, CallData, shortString } from "starknet";
+import { connect } from "get-starknet";
+
+
+export function twoFeltToString(x:any, y:any) {
+  const str1 = shortString.decodeShortString(x);
+  const str2 = shortString.decodeShortString(y);
+return str1 + str2;
+}
+
+export function stringToTwoFelt(str: string) {
+  const arrStr = shortString.splitLongString(str);
+  const x = shortString.encodeShortString(arrStr[0]);
+  const y = shortString.encodeShortString(arrStr[1]);
+return { x, y };
+}
+
 
 export default function ActionButtons() {
   const [amount, setAmount] = React.useState(50);
+
+  const [connection, setConnection] = useState(null);
+  const [address, setAddress] = useState("");
 
   //get player index from local storage
   const playerIndex = localStorage.getItem('playerIndex');
@@ -29,7 +49,18 @@ export default function ActionButtons() {
       console.error('Error creating action', result.error);
     }
 
+    const amountToAdd = result.data;
+
+    console.log('Amount to add', result.data); // Working here
+
+
+    
+
+    // Here it should return the amount to be added to the pot
+
     console.log('Action created', result.data);
+
+    // Here sending the amount to the pot contract
   }
 
   async function startgame(request: startGameRequest) {
