@@ -9,3 +9,7 @@ export function getRpcPath(): string {
 export function getEnvContextId(): string {
   return import.meta.env['VITE_CONTEXT_ID'] ?? '';
 }
+
+export function getStarknetRpcUrl(): string {
+  return import.meta.env['VITE_STARKNET_RPC_URL'] ?? '';
+}
